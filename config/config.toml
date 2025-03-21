@@ -3,4 +3,4 @@ listener_dir = "logs/listener_logs"
 established_dir = "logs/established_logs"
 
 [monitor]
-interval = 5  # 单位：秒
+interval = 1  # 单位：秒

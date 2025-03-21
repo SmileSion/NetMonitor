@@ -62,6 +62,6 @@ func (m *EstablishedMonitor) LogNewConnections(conns []netinfo.Connection) {
     for _, c := range conns {
         msg := fmt.Sprintf("[ESTABLISHED] 协议: %s, 本地地址: %s → 远程地址: %s, PID: %d, 进程: %s",
             c.Protocol, c.LocalAddr, c.RemoteAddr, c.PID, c.ProcessName)
-        logger.LogMessage(logger.EstablishedLogDir, msg)
+        logger.LogMessage(logger.EstablishedWriter, msg)
     }
 }

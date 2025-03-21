@@ -81,6 +81,6 @@ func (m *ListenerMonitor) LogNewListeners(listeners []netinfo.Connection) {
 	for _, l := range listeners {
 		msg := fmt.Sprintf("[LISTEN] 协议: %s, 地址: %s, PID: %d, 进程: %s",
 			l.Protocol, l.LocalAddr, l.PID, l.ProcessName)
-		logger.LogMessage(logger.ListenerLogDir, msg)
+		logger.LogMessage(logger.ListenerWriter, msg)
 	}
 }

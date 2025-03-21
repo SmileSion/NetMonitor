@@ -2,33 +2,41 @@ package logger
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
 )
 
-const (
-	ListenerLogDir   = "logs/listener_logs"
-	EstablishedLogDir = "logs/established_logs"
+var (
+	ListenerWriter   io.Writer
+	EstablishedWriter io.Writer
 )
 
-func ensureDir(path string) error {
-	return os.MkdirAll(path, 0755)
+func InitLogger(listenerDir, establishedDir string) error {
+	if err := createLogWriter(listenerDir, &ListenerWriter); err != nil {
+		return err
+	}
+	return createLogWriter(establishedDir, &EstablishedWriter)
 }
 
-func LogMessage(logDir, message string) error {
-	if err := ensureDir(logDir); err != nil {
+func createLogWriter(dir string, writer *io.Writer) error {
+	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
 
-	logFile := filepath.Join(logDir, time.Now().Format("2006-01-02")+".log")
+	logFile := filepath.Join(dir, time.Now().Format("2006-01-02")+".log")
 	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 
+	// 同时输出到文件和控制台
+	*writer = io.MultiWriter(f, os.Stdout)
+	return nil
+}
+
+func LogMessage(writer io.Writer, message string) {
 	entry := fmt.Sprintf("[%s] %s\n", time.Now().Format(time.RFC3339), message)
-	_, err = f.WriteString(entry)
-	return err
+	writer.Write([]byte(entry))
 }
