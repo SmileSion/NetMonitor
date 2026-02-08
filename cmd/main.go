@@ -6,6 +6,7 @@ import (
 	"netmonitor/pkg/logger"
 	"netmonitor/pkg/monitor"
 	"netmonitor/pkg/netinfo"
+	"netmonitor/pkg/web"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -56,6 +57,25 @@ func main() {
 	// 初始化统计
 	stats := monitor.NewStats()
 
+	// 初始化Web服务器(如果启用)
+	var webServer *web.Server
+	if cfg.Web.Enabled {
+		webServer = web.NewServer(cfg.Web.Port)
+		webServer.SetStats(stats)
+		webServer.SetFilter(filter)
+
+		// 预加载连接数据
+		allConns, _ := netinfo.GetConnections()
+		webServer.UpdateConnections(allConns)
+
+		go func() {
+			if err := webServer.Start(); err != nil {
+				logger.LogWarning(os.Stdout, fmt.Sprintf("Web服务器启动失败: %v", err))
+			}
+		}()
+		time.Sleep(100 * time.Millisecond) // 等待Web服务器启动
+	}
+
 	// 设置优雅退出
 	setupExitHandler()
 
@@ -84,6 +104,9 @@ func main() {
 				listenerMon.LogNewListeners(newListeners)
 				for _, l := range newListeners {
 					stats.RecordNewListener(l.Protocol, l.PID)
+					if webServer != nil {
+						webServer.BroadcastNewConnection(l)
+					}
 				}
 			}
 
@@ -91,6 +114,9 @@ func main() {
 				listenerMon.LogClosedListeners(closedListeners)
 				for _, l := range closedListeners {
 					stats.RecordClosedListener(l.Protocol, l.PID)
+					if webServer != nil {
+						webServer.BroadcastClosedConnection(l)
+					}
 				}
 			}
 
@@ -105,6 +131,9 @@ func main() {
 				establishedMon.LogNewConnections(newEstablished)
 				for _, c := range newEstablished {
 					stats.RecordNewConnection(c.Protocol, c.PID)
+					if webServer != nil {
+						webServer.BroadcastNewConnection(c)
+					}
 				}
 			}
 
@@ -112,12 +141,20 @@ func main() {
 				establishedMon.LogClosedConnections(closedEstablished)
 				for _, c := range closedEstablished {
 					stats.RecordClosedConnection(c.Protocol, c.PID)
+					if webServer != nil {
+						webServer.BroadcastClosedConnection(c)
+					}
 				}
 			}
 
 			// 更新统计信息
 			allConns, _ := netinfo.GetConnections()
 			stats.Update(allConns)
+
+			// 更新Web服务器的连接列表
+			if webServer != nil {
+				webServer.UpdateConnections(allConns)
+			}
 
 		case <-statsTicker.C:
 			// 显示统计信息

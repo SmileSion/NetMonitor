@@ -13,6 +13,7 @@ type Config struct {
 	Log     LogConfig
 	Monitor MonitorConfig
 	Filter  FilterConfig
+	Web     WebConfig
 }
 
 type LogConfig struct {
@@ -34,6 +35,11 @@ type FilterConfig struct {
 	RemoteIP     string   `toml:"remote_ip"`   // 远程IP过滤(留空表示不过滤)
 }
 
+type WebConfig struct {
+	Enabled bool `toml:"enabled"` // 是否启用Web界面
+	Port    int  `toml:"port"`    // Web服务端口
+}
+
 func LoadConfig(path string) (*Config, error) {
 	cfg := &Config{
 		Log: LogConfig{
@@ -51,6 +57,10 @@ func LoadConfig(path string) (*Config, error) {
 			PIDs:        []int32{},
 			Protocols:   []string{"tcp", "udp"},
 			RemoteIP:    "",
+		},
+		Web: WebConfig{
+			Enabled: false,
+			Port:    8080,
 		},
 	}
 

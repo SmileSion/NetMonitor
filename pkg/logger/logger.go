@@ -101,9 +101,13 @@ func LogConnection(writer io.Writer, connType, protocol, localAddr, remoteAddr s
 
 // 检查是否支持颜色输出
 func isColorSupported() bool {
-	// Windows 10及以上支持ANSI颜色
+	// Windows 10及以上支持ANSI颜色, Linux终端也支持
 	term := os.Getenv("TERM")
-	return strings.Contains(term, "xterm") || strings.Contains(term, "color") || os.Getenv("WT_SESSION") != ""
+	isWindows := strings.Contains(strings.ToLower(os.Getenv("OS")), "windows") || os.Getenv("WT_SESSION") != ""
+
+	// Windows 10+ 和大多数Linux终端都支持ANSI颜色
+	return strings.Contains(term, "xterm") || strings.Contains(term, "color") ||
+		strings.Contains(term, "ansi") || isWindows
 }
 
 // 统计信息输出

@@ -8,6 +8,12 @@ import (
 	"syscall"
 )
 
+// 跨平台套接字类型常量
+const (
+	SOCK_STREAM = 1
+	SOCK_DGRAM  = 2
+)
+
 type Connection struct {
 	LocalAddr   string // 本地地址(IP:Port)
 	RemoteAddr  string // 远程地址(IP:Port)
@@ -24,16 +30,16 @@ type ConnectionFilter struct {
 	RemoteIP    string
 }
 
-// 精准协议判断（与Python逻辑一致）
+// 精准协议判断（跨平台兼容）
 func getProtocol(c net.ConnectionStat) string {
-	switch c.Type {
-	case syscall.SOCK_STREAM:
+	// 使用跨平台兼容的方式判断
+	if c.Type == syscall.SOCK_STREAM || c.Type == SOCK_STREAM {
 		return "TCP"
-	case syscall.SOCK_DGRAM:
-		return "UDP"
-	default:
-		return fmt.Sprintf("UNKNOWN-%d", c.Type)
 	}
+	if c.Type == syscall.SOCK_DGRAM || c.Type == SOCK_DGRAM {
+		return "UDP"
+	}
+	return fmt.Sprintf("UNKNOWN-%d", c.Type)
 }
 
 func (f *ConnectionFilter) ShouldFilter(conn Connection) bool {
@@ -81,7 +87,7 @@ func (f *ConnectionFilter) ShouldFilter(conn Connection) bool {
 func GetConnections() ([]Connection, error) {
 	conns, err := net.Connections("all")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("获取连接信息失败: %w", err)
 	}
 
 	var result []Connection
@@ -99,10 +105,13 @@ func GetConnections() ([]Connection, error) {
 			ProcessName: "",
 		}
 
+		// 获取进程名,增加错误处理
 		if c.Pid > 0 {
-			p, _ := process.NewProcess(c.Pid)
-			if name, err := p.Name(); err == nil {
-				conn.ProcessName = name
+			p, err := process.NewProcess(c.Pid)
+			if err == nil {
+				if name, err := p.Name(); err == nil {
+					conn.ProcessName = name
+				}
 			}
 		}
 
