@@ -2,6 +2,8 @@
 listener_dir = "logs/listener_logs"
 established_dir = "logs/established_logs"
 color_enabled = true
+retention_days = 7    # 日志保留天数
+auto_compress = true    # 是否自动压缩旧日志
 
 [monitor]
 interval = 1  # 单位：秒

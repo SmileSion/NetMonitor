@@ -32,6 +32,14 @@ func main() {
 		panic(fmt.Sprintf("初始化日志失败: %v", err))
 	}
 
+	// 启动日志清理任务
+	cleanupConfig := logger.CleanupConfig{
+		Enabled:          true,
+		RetentionDays:   cfg.Log.RetentionDays,
+		CompressEnabled: cfg.Log.AutoCompress,
+	}
+	logger.StartCleanupTask(cfg.Log.ListenerDir, cfg.Log.EstablishedDir, cleanupConfig)
+
 	// 创建过滤器
 	filter := &netinfo.ConnectionFilter{
 		ProcessName: cfg.Filter.ProcessName,

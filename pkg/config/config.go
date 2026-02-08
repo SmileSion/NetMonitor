@@ -17,9 +17,11 @@ type Config struct {
 }
 
 type LogConfig struct {
-	ListenerDir   string `toml:"listener_dir"`
-	EstablishedDir string `toml:"established_dir"`
-	ColorEnabled  bool   `toml:"color_enabled"`
+	ListenerDir     string `toml:"listener_dir"`
+	EstablishedDir  string `toml:"established_dir"`
+	ColorEnabled    bool   `toml:"color_enabled"`
+	RetentionDays   int    `toml:"retention_days"`    // 日志保留天数
+	AutoCompress    bool   `toml:"auto_compress"`    // 是否自动压缩日志
 }
 
 type MonitorConfig struct {
@@ -43,9 +45,11 @@ type WebConfig struct {
 func LoadConfig(path string) (*Config, error) {
 	cfg := &Config{
 		Log: LogConfig{
-			ListenerDir:   "logs/listener_logs",
-			EstablishedDir: "logs/established_logs",
-			ColorEnabled:  true,
+			ListenerDir:     "logs/listener_logs",
+			EstablishedDir:  "logs/established_logs",
+			ColorEnabled:     true,
+			RetentionDays:   7,
+			AutoCompress:    true,
 		},
 		Monitor: MonitorConfig{
 			Interval:      1,
