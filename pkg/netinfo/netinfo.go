@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/shirou/gopsutil/v3/net"
 	"github.com/shirou/gopsutil/v3/process"
+	"strings"
 	"syscall"
 )
 
@@ -16,6 +17,13 @@ type Connection struct {
 	ProcessName string // 进程名称
 }
 
+type ConnectionFilter struct {
+	ProcessName string
+	PIDs        []int32
+	Protocols   []string
+	RemoteIP    string
+}
+
 // 精准协议判断（与Python逻辑一致）
 func getProtocol(c net.ConnectionStat) string {
 	switch c.Type {
@@ -26,6 +34,48 @@ func getProtocol(c net.ConnectionStat) string {
 	default:
 		return fmt.Sprintf("UNKNOWN-%d", c.Type)
 	}
+}
+
+func (f *ConnectionFilter) ShouldFilter(conn Connection) bool {
+	// 检查协议
+	if len(f.Protocols) > 0 {
+		found := false
+		for _, p := range f.Protocols {
+			if strings.EqualFold(p, conn.Protocol) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return true
+		}
+	}
+
+	// 检查进程名
+	if f.ProcessName != "" && !strings.EqualFold(conn.ProcessName, f.ProcessName) {
+		return true
+	}
+
+	// 检查PID列表
+	if len(f.PIDs) > 0 {
+		found := false
+		for _, pid := range f.PIDs {
+			if pid == conn.PID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return true
+		}
+	}
+
+	// 检查远程IP
+	if f.RemoteIP != "" && !strings.Contains(conn.RemoteAddr, f.RemoteIP) {
+		return true
+	}
+
+	return false
 }
 
 func GetConnections() ([]Connection, error) {

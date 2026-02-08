@@ -1,6 +1,16 @@
 [log]
 listener_dir = "logs/listener_logs"
 established_dir = "logs/established_logs"
+color_enabled = true
 
 [monitor]
 interval = 1  # 单位：秒
+show_stats = true
+log_to_console = true
+
+[filter]
+# 留空表示不过滤
+process_name = ""  # 要监控的进程名称,例如 "chrome.exe"
+pids = []          # 要监控的PID列表,例如 [1234, 5678]
+protocols = ["tcp", "udp"]  # 监控的协议类型
+remote_ip = ""      # 过滤特定远程IP

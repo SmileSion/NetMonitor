@@ -1,7 +1,6 @@
 package monitor
 
 import (
-	"fmt"
 	"net"
 	"netmonitor/pkg/logger"
 	"netmonitor/pkg/netinfo"
@@ -10,11 +9,13 @@ import (
 
 type ListenerMonitor struct {
 	initialState map[uint32]netinfo.Connection
+	filter       *netinfo.ConnectionFilter
 }
 
-func NewListenerMonitor() *ListenerMonitor {
+func NewListenerMonitor(filter *netinfo.ConnectionFilter) *ListenerMonitor {
 	return &ListenerMonitor{
 		initialState: make(map[uint32]netinfo.Connection),
+		filter:       filter,
 	}
 }
 
@@ -46,7 +47,7 @@ func (m *ListenerMonitor) Initialize() error {
 	}
 
 	for _, c := range conns {
-		if isListeningPort(c) {
+		if isListeningPort(c) && !m.filter.ShouldFilter(c) {
 			port := extractPort(c.LocalAddr)
 			m.initialState[port] = c
 		}
@@ -54,33 +55,52 @@ func (m *ListenerMonitor) Initialize() error {
 	return nil
 }
 
-func (m *ListenerMonitor) CheckChanges() ([]netinfo.Connection, error) {
+func (m *ListenerMonitor) CheckChanges() ([]netinfo.Connection, []netinfo.Connection, error) {
 	currentConns, err := netinfo.GetConnections()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var newListeners []netinfo.Connection
+	var closedListeners []netinfo.Connection
 	currentState := make(map[uint32]netinfo.Connection)
 
 	for _, c := range currentConns {
 		if isListeningPort(c) {
 			port := extractPort(c.LocalAddr)
 			currentState[port] = c
-			if _, exists := m.initialState[port]; !exists {
+
+			// 检查是否被过滤器过滤
+			shouldFilter := m.filter.ShouldFilter(c)
+
+			// 检查新监听端口
+			if _, exists := m.initialState[port]; !exists && !shouldFilter {
 				newListeners = append(newListeners, c)
 			}
 		}
 	}
 
+	// 检查关闭的监听端口
+	for port, oldConn := range m.initialState {
+		if _, exists := currentState[port]; !exists {
+			closedListeners = append(closedListeners, oldConn)
+		}
+	}
+
 	m.initialState = currentState
-	return newListeners, nil
+	return newListeners, closedListeners, nil
 }
 
 func (m *ListenerMonitor) LogNewListeners(listeners []netinfo.Connection) {
 	for _, l := range listeners {
-		msg := fmt.Sprintf("[LISTEN] 协议: %s, 地址: %s, PID: %d, 进程: %s",
-			l.Protocol, l.LocalAddr, l.PID, l.ProcessName)
-		logger.LogMessage(logger.ListenerWriter, msg)
+		logger.LogConnection(logger.ListenerWriter, "LISTEN", l.Protocol,
+			l.LocalAddr, "", l.PID, l.ProcessName, true)
+	}
+}
+
+func (m *ListenerMonitor) LogClosedListeners(listeners []netinfo.Connection) {
+	for _, l := range listeners {
+		logger.LogConnection(logger.ListenerWriter, "LISTEN", l.Protocol,
+			l.LocalAddr, "", l.PID, l.ProcessName, false)
 	}
 }
